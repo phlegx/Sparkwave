@@ -4,3 +4,4 @@
 .project
 target
 .DS_STORE
+spark-wave/sparkwave.log

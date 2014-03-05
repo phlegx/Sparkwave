@@ -43,105 +43,114 @@ import at.sti2.spark.preprocess.RDFFormatTransformer;
 import at.sti2.spark.preprocess.XSLTransformer;
 
 public class SupportHandler implements SparkwaveHandler {
-	
+
 	private long twoMinutesPause = 0l;
 
 	private static Logger logger = LoggerFactory.getLogger(SupportHandler.class);
 	private Handler handlerProperties = null;
-	
+	//private Pattern pattern = null;
+
 	@Override
 	public void init(Handler handlerProperties) {
 		this.handlerProperties = handlerProperties;
 	}
-	
+
 	@Override
 	public void invoke(Match match) throws SparkwaveHandlerException{
-		
-		boolean twominfilter = false;
-//		String xsltLocation = "target/classes/support/fromRDFToEvent.xslt";
-		String xsltLocation = "";
-		
-		String value = handlerProperties.getValue("twominfilter");
-		if(value == null || (value != null && value.equals("true"))){
-			twominfilter = true;
+
+		//if(getVelocityDouble(match) >= pattern.getVelocityLimit()) {
+		if(getVelocityDouble(match) <= 3) {
+			//logger.debug("velocity is <= " + pattern.getVelocityLimit());
+			logger.debug("velocity is <= 3, sending to REST Webserver");
+
+			boolean twominfilter = false;
+	//		String xsltLocation = "target/classes/support/fromRDFToEvent.xslt";
+			String xsltLocation = "";
+
+			String value = handlerProperties.getValue("twominfilter");
+			if(value == null || (value != null && value.equals("true"))){
+				twominfilter = true;
+			}
+
+			value = handlerProperties.getValue("xsltLocation");
+			if(value != null && !"".equals(value)){
+				xsltLocation = value;
+			}
+
+			/*
+			 * TODO This is a hack to stop Impactorium handler of sending thousands of matches regarding the same event.
+			 *
+			 ******************************************************/
+			if(twominfilter){
+				long timestamp = (new Date()).getTime();
+				if (timestamp-twoMinutesPause < 120000)
+					return;
+
+				twoMinutesPause = timestamp;
+			}
+			/* *****************************************************/
+
+			final String url = handlerProperties.getValue("url");
+			logger.info("Invoking URL " + url);
+
+			// formatting match to n-triple format
+			final List<TripleCondition> conditions = handlerProperties.getTriplePatternGraph().getConstruct().getConditions();
+			final String formatMatchNTriples = match.outputNTriples(conditions);
+
+			// converting n-triple string to inputstream
+			final InputStream strIn = IOUtils.toInputStream(formatMatchNTriples);
+
+			ByteArrayOutputStream out1 = new ByteArrayOutputStream();
+
+			// convert n-triple to RDFXML
+			RDFFormatTransformer ntToRDFXML = new RDFFormatTransformer();
+			ntToRDFXML.init(strIn, out1);
+			ntToRDFXML.setProperty("from", "N3");
+			ntToRDFXML.setProperty("to", "RDF/XML-ABBREV");
+			ntToRDFXML.process();
+
+			logger.debug("N3 -> RDF/XML output:\n"+out1.toString());
+
+			ByteArrayInputStream in1 = new ByteArrayInputStream(out1.toByteArray());
+			ByteArrayOutputStream out2 = new ByteArrayOutputStream();
+
+			// convert RDFXML to XML
+			XSLTransformer rdfxmlToXML = new XSLTransformer();
+			rdfxmlToXML.init(in1 , out2);
+			rdfxmlToXML.setProperty("xsltLocation", xsltLocation);
+			rdfxmlToXML.process();
+
+			String strEvent = out2.toString();
+			logger.debug("RDF/XML -> Event XML output:\n"+strEvent);
+
+			sendToREST(url, strEvent);
 		}
-		
-		value = handlerProperties.getValue("xsltLocation");
-		if(value != null && !"".equals(value)){
-			xsltLocation = value;
-		}
-		
-		
-		/*
-		 * TODO This is a hack to stop Impactorium handler of sending thousands of matches regarding the same event. 
-		 *
-		 ******************************************************/
-		if(twominfilter){
-			long timestamp = (new Date()).getTime();
-			if (timestamp-twoMinutesPause < 120000)
-				return;
-			
-			twoMinutesPause = timestamp;			
-		}
-		/* *****************************************************/
-		
-		final String url = handlerProperties.getValue("url");
-		logger.info("Invoking URL " + url);
-	
-		// formatting match to n-triple format
-		final List<TripleCondition> conditions = handlerProperties.getTriplePatternGraph().getConstruct().getConditions();
-		final String formatMatchNTriples = match.outputNTriples(conditions);
-		
-		// converting n-triple string to inputstream
-		final InputStream strIn = IOUtils.toInputStream(formatMatchNTriples);
-		
-		ByteArrayOutputStream out1 = new ByteArrayOutputStream();
-		
-		// convert n-triple to RDFXML
-		RDFFormatTransformer ntToRDFXML = new RDFFormatTransformer();
-		ntToRDFXML.init(strIn, out1);
-		ntToRDFXML.setProperty("from", "N3");
-		ntToRDFXML.setProperty("to", "RDF/XML-ABBREV");
-		ntToRDFXML.process();
-		
-		logger.debug("N3 -> RDF/XML output:\n"+out1.toString());
-		
-		ByteArrayInputStream in1 = new ByteArrayInputStream(out1.toByteArray());
-		ByteArrayOutputStream out2 = new ByteArrayOutputStream();
-		
-		// convert RDFXML to XML
-		XSLTransformer rdfxmlToXML = new XSLTransformer();
-		rdfxmlToXML.init(in1 , out2);
-		rdfxmlToXML.setProperty("xsltLocation", xsltLocation);
-		rdfxmlToXML.process();
-		
-		String strEvent = out2.toString();
-		logger.debug("RDF/XML -> Event XML output:\n"+strEvent);
-		
-		sendToREST(url, strEvent);
+		logger.debug("velocity is > 3, not sending to REST Webserver");
+		//logger.debug("velocity is > " + pattern.getVelocityLimit());
+
 	}
-	
+
 	private void sendToREST(String url, String content){
-		
+
 		//HTTP Post
 		HttpClient httpclient = new DefaultHttpClient();
 		HttpPost httpPost = new HttpPost(url);
-		
+
 		try {
 			StringEntity postStringEntity = new StringEntity(content);
 			postStringEntity.setContentType("text/xml");
-			
+
 			httpPost.addHeader("Accept", "*/*");
 			httpPost.setEntity(postStringEntity);
 			HttpResponse response = httpclient.execute(httpPost);
-			
+
 			logger.info("[POSTING Event] Status code " + response.getStatusLine());
-			
+
 			//First invocation succeeded
 			if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK){
-				
+
 				HttpEntity entityResponse = response.getEntity();
-				
+
 				//Something has been returned, let's see what is in it
 				if (entityResponse != null){
 					String stringResponse = EntityUtils.toString(entityResponse);
@@ -157,5 +166,10 @@ public class SupportHandler implements SparkwaveHandler {
 		} finally{
 			httpclient.getConnectionManager().shutdown();
 		}
+	}
+
+	private double getVelocityDouble(Match match){
+		return Double.parseDouble(match.getVariableBindings().get("velocity").toString().replace("\"", ""));
+
 	}
 }

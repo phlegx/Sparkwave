@@ -1,0 +1,44 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX support: <http://www.foi.se/support/wp4demo#>
+
+#Location of the epsilon ontology file
+EPSILON_ONTOLOGY = "target/test-classes/support-ir/support_schema.owl"
+
+#Location of the static instances file
+#STATIC_INSTANCES = "target/test-classes/support-ir/instances.nt"
+
+# Velocity Limit
+#VELOCITY_LIMIT = "3.0"
+
+HANDLERS{
+
+#	HANDLER {
+#		"class" = "at.sti2.spark.handler.RestHandler"
+#		"url" = "http://www.support-project.eu/SupportPlatform/SupportPlatformEventService.svc/event"
+#	}
+
+	HANDLER {
+		"class" = "at.sti2.spark.handler.SupportHandler"
+		"url" = "http://www.support-project.eu/SupportPlatform/SupportPlatformEventService.svc/event"
+		"twominfilter" = "true"
+		"xsltLocation" = "target/classes/support/fromRDFToEvent.xslt"
+	}
+
+	HANDLER {
+		"class" = "at.sti2.spark.handler.ConsoleHandler"
+		"verbose" = "true"
+	}
+}
+
+CONSTRUCT {
+	?event rdf:type support:Sensor .
+	?event support:id "ID()"^^<http://www.w3.org/2001/XMLSchema#long> .
+	?event support:date "NOW()"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+	?target rdf:type support:Target .
+	?target support:velocity ?velocity .
+} WHERE {
+	?event rdf:type support:Event .
+	?event support:target ?target .
+	?target support:velocity ?velocity .
+    TIMEWINDOW (100)
+}

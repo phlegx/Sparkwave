@@ -21,19 +21,21 @@ import java.util.List;
 
 
 /**
- * 
+ *
  * Triple pattern
  * @author srdkom
  * @author michaelrogger
+ * @author martinkammerlander
  */
 public class Pattern {
 
 	private long id = 0;
-	
+
 	private GraphPattern whereClause = null;
 	private Construct construct = null;
 	private List <Prefix> prefixes = null;
 	private String epsilonOntology = "null";
+	//private Double velocityLimit = null;
 	private String staticInstances = "null";
 	private List <Handler> handlers = null;
 
@@ -43,15 +45,15 @@ public class Pattern {
 		prefixes = new ArrayList <Prefix> ();
 		construct = new Construct();
 		handlers = new ArrayList <Handler>();
-		
+
 		//use unix time stamp as id
 		id = System.currentTimeMillis();
 	}
-	
+
 	public GraphPattern getWhereClause(){
 		return whereClause;
 	}
-	
+
 	public void setWhereClause(GraphPattern whereClause){
 		this.whereClause = whereClause;
 	}
@@ -59,7 +61,7 @@ public class Pattern {
 	public Construct getConstructConditions() {
 		return construct;
 	}
-	
+
 	public List<Prefix> getPrefixes() {
 		return prefixes;
 	}
@@ -67,15 +69,15 @@ public class Pattern {
 	public void addPrefix(Prefix prefix){
 		prefixes.add(prefix);
 	}
-	
+
 	public Prefix getPrefixByIndex(int index){
 		return prefixes.get(index);
 	}
-	
+
 	public List<Handler> getHandlers() {
 		return handlers;
 	}
-	
+
 	public String getEpsilonOntology() {
 		return epsilonOntology;
 	}
@@ -83,6 +85,16 @@ public class Pattern {
 	public void setEpsilonOntology(String epsilonOntology) {
 		this.epsilonOntology = epsilonOntology;
 	}
+
+	/*public Double getVelocityLimit() {
+		return velocityLimit;
+	}
+
+
+	public void setVelocityLimit(Double velocityLimit) {
+		this.velocityLimit = velocityLimit;
+	}
+	*/
 
 	public String getStaticInstances() {
 		return staticInstances;
@@ -98,16 +110,16 @@ public class Pattern {
 
 	public String getNamespaceByLabel(String label){
 		String namespace = null;
-		
+
 		for (Prefix prefix : prefixes)
 			if (prefix.getLabel().equals(label)){
 				namespace = prefix.getNamespace();
 				break;
 			}
-		
+
 		return namespace;
 	}
-	
+
 	public Construct getConstruct() {
 		return construct;
 	}
@@ -119,15 +131,15 @@ public class Pattern {
 	public long getId() {
 		return id;
 	}
-	
+
 	public String toString(){
 		return formatString().toString();
 	}
 
 	public StringBuffer formatString(){
-		
+
 		StringBuffer buffer = new StringBuffer();
-		
+
 		if (prefixes.size() > 0){
 			for (Prefix prefix : prefixes){
 				buffer.append("PREFIX ");
@@ -136,13 +148,16 @@ public class Pattern {
 			}
 		}
 		buffer.append("\n");
-		
+
 		buffer.append("EPSILON_ONTOLOGY = \""+epsilonOntology+"\"\n");
 		buffer.append("\n");
-		
+
+		//buffer.append("VELOCITY_LIMIT = \""+velocityLimit+"\"\n");
+		//buffer.append("\n");
+
 		buffer.append("STATIC_INSTANCES = \""+staticInstances+"\"\n");
 		buffer.append("\n");
-		
+
 		if (handlers != null){
 			buffer.append("HANDLERS { \n");
 			for(Handler handler : handlers){
@@ -160,24 +175,24 @@ public class Pattern {
 		buffer.append("WHERE {\n");
 		buffer.append(whereClause);
 		buffer.append("}\n");
-		
+
 		return buffer;
 	}
 
 	public void setPrefixes(List<Prefix> prefixes) {
 		this.prefixes = prefixes;
 	}
-	
+
 	/**
-	 * This method checks minimal requirements to be a valid pattern: ID and WHERECLAUSE 
+	 * This method checks minimal requirements to be a valid pattern: ID and WHERECLAUSE
 	 * @return true if requirements fulfilled, false otherwise
 	 */
 	public boolean verifyPattern(){
-		
+
 		// A pattern must have an id, whereClause
 		if(id == 0) return false;
 		if(whereClause==null) return false;
-		
+
 		return true;
 	}
 }

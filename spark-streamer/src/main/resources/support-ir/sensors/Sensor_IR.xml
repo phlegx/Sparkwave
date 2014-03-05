@@ -1,0 +1,13 @@
+<Event generated-by="IRDetector" id="N10001" type="wpdemo:Event" name="SSID_DETECTION" created="2013-10-18T14:10:38+02:00" ref_uri="wpdemo:EVENT_X">
+	<source-data></source-data>
+	<event-description>
+    	<target>
+			<object type="IRTarget" uri="wpdemo:target_Y">
+				<velocity>3</velocity>
+				<pos_x>91.8</pos_x>
+				<pos_y>71.3</pos_y>
+				<type>boat</type>
+			</object>
+        </target>
+	</event-description>
+</Event>
