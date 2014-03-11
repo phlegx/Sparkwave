@@ -59,9 +59,11 @@ public class SupportHandler implements SparkwaveHandler {
 	public void invoke(Match match) throws SparkwaveHandlerException{
 
 		//if(getVelocityDouble(match) >= pattern.getVelocityLimit()) {
-		if(getVelocityDouble(match) <= 3) {
+		double velocity = getVelocityDouble(match);
+
+		if(velocity <= 3 || velocity < 0) {
 			//logger.debug("velocity is <= " + pattern.getVelocityLimit());
-			logger.debug("velocity is <= 3, sending to REST Webserver");
+			//logger.debug("velocity is <= 3, sending to REST Webserver");
 
 			boolean twominfilter = false;
 	//		String xsltLocation = "target/classes/support/fromRDFToEvent.xslt";
@@ -168,8 +170,13 @@ public class SupportHandler implements SparkwaveHandler {
 		}
 	}
 
+	// Get velocity and return it
+	// Hack: If velocity is not found return a negative double
 	private double getVelocityDouble(Match match){
-		return Double.parseDouble(match.getVariableBindings().get("velocity").toString().replace("\"", ""));
-
+		try {
+			return Double.parseDouble(match.getVariableBindings().get("velocity").toString().replace("\"", ""));
+		} catch (Exception ex){
+			return -1.0;
+		}
 	}
 }
